@@ -1,5 +1,3 @@
-# dependencies-action-plus
-
 ![PR Dependency Check+ logo](assets/pr-dependency-check-banner-v5.png)
 
 This GitHub Action enforces PR dependencies declared in discussion comments or the PR description.
