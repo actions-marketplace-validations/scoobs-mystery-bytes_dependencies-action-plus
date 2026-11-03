@@ -13,6 +13,33 @@ const partialLinkRegex = new RegExp(`(${keyPhrases}):? ([-_\\w]+)\\/([-._a-z0-9]
 const partialUrlRegex = new RegExp(`(${keyPhrases}):? ([-_\\w]+)\\/([-._a-z0-9]+)\\/(${issueTypes})\\/(\\d+)`, 'gmi');
 const fullUrlRegex = new RegExp(`(${keyPhrases}):? https?:\\/\\/(?:${domainsString})\\/([-_\\w]+)\\/([-._a-z0-9]+)\\/(${issueTypes})\\/(\\d+)`, 'gmi');
 const markdownRegex = new RegExp(`(${keyPhrases}):? \\[.*\\]\\(https?:\\/\\/(?:${domainsString})\\/([-_\\w]+)\\/([-._a-z0-9]+)\\/(${issueTypes})\\/(\\d+)\\)`, 'gmi');
+const statusMarker = '<!-- pr-dependencies -->';
+
+function withoutStatus(body) {
+    const start = body.indexOf(statusMarker);
+    return start === -1 ? body : body.slice(0, start);
+}
+
+function formatStatus(dependencies) {
+    const reference = dependency => {
+        const sameRepo = dependency.owner.toLowerCase() === github.context.repo.owner.toLowerCase() &&
+            dependency.repo.toLowerCase() === github.context.repo.repo.toLowerCase();
+        return `${sameRepo ? '' : `${dependency.owner}/${dependency.repo}`}#${dependency.pull_number}`;
+    };
+    const escapeTitle = title => title.replace(/\s+/g, ' ').replace(/[\\`*_{}\[\]<>()|!]/g, '\\$&');
+    const waiting = dependencies.filter(item => !item.resolved);
+    const notice = waiting.length
+        ? `> [!WARNING]\n> **Waiting on ${waiting.length} ${waiting.length === 1 ? 'dependency' : 'dependencies'}.** Merge ${waiting.map(item => reference(item.dependency)).join(', ')} before merging this PR.`
+        : '> [!TIP]\n> **All dependencies merged.** This PR is clear of dependency blockers.';
+    const rows = dependencies.map(({ dependency, title, state }) =>
+        `| ${reference(dependency)} — ${escapeTitle(title)} | ${state} |`);
+    const now = new Date();
+    const date = now.toLocaleDateString('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC',
+    });
+    const time = now.toISOString().slice(11, 16);
+    return `${statusMarker}\n\n### 🔗 Pull request dependencies\n\n${notice}\n\n| Dependency | Status |\n| :--- | :--- |\n${rows.join('\n')}\n\n<details>\n<summary>How dependencies are checked</summary>\n\nDependencies are refreshed automatically when this workflow runs.\nOnly merged pull requests count as resolved.\n\n</details>\n\n---\n_Last checked: ${date} · ${time} UTC_`;
+}
 
 function escapeDomainForRegex(domain) {
     return domain.replace('.', '\\.');
@@ -71,17 +98,39 @@ async function evaluate() {
             pull_number: github.context.issue.number,
         });
 
-        if (!pullRequest.body){
-            core.info('body empty')
-            return;
+        const commentParams = {
+            ...github.context.repo,
+            issue_number: github.context.issue.number,
+        };
+        const comments = await octokit.paginate(octokit.issues.listComments, {
+            ...commentParams,
+            per_page: 100,
+        });
+        let dependencyComment = comments.find(comment => comment.body?.includes(statusMarker));
+        let dependencies = [];
+        for (const comment of comments) {
+            const found = getAllDependencies(withoutStatus(comment.body || ''));
+            if (found.length !== 0) {
+                dependencyComment = dependencyComment || comment;
+                dependencies = found;
+                break;
+            }
         }
-
-        core.info('\nReading PR body...');
-        var dependencies = getAllDependencies(pullRequest.body);
+        if (dependencies.length === 0) {
+            core.info('\nReading PR body...');
+            dependencies = getAllDependencies(pullRequest.body || '');
+        }
+        dependencies = dependencies.filter((dependency, index, all) =>
+            all.findIndex(other => other.owner.toLowerCase() === dependency.owner.toLowerCase() &&
+                other.repo.toLowerCase() === dependency.repo.toLowerCase() &&
+                other.pull_number === dependency.pull_number) === index);
 
         core.info('\nAnalyzing lines...');
         var dependencyIssues = [];
+        const statuses = [];
         for (var d of dependencies) {
+            const status = { dependency: d, resolved: false, title: 'Could not be located', state: '❓ Unknown' };
+            statuses.push(status);
             core.info(`  Fetching '${JSON.stringify(d)}'`);
             var isPr = true;
             var response = await octokit.pulls.get(d).catch(error => core.error(error));
@@ -103,22 +152,40 @@ async function evaluate() {
             if (isPr) {
                 const { data: pr } = response;
                 if (!pr) continue;
-                if (!pr.merged && !pr.closed_at) {
-                    core.info('    PR is still open.');
+                status.title = pr.title;
+                if (!pr.merged) {
+                    status.state = pr.closed_at ? '❌ Closed without merging' : '⏳ Open';
+                    core.info('    PR has not been merged.');
                     dependencyIssues.push(pr);
                 } else {
-                    core.info('    PR has been closed.');
+                    status.resolved = true;
+                    status.state = '✅ Merged';
+                    core.info('    PR has been merged.');
                 }
             } else {
                 const { data: issue } = response;
                 if (!issue) continue;
-                if (!issue.closed_at) {
-                    core.info('    Issue is still open.');
-                    dependencyIssues.push(issue);
-                } else {
-                    core.info('    Issue has been closed.');
-                }
+                status.title = issue.title;
+                status.state = '⚠️ Issue (requires a pull request)';
+                dependencyIssues.push(issue);
             }
+        }
+
+        if (dependencyComment) {
+            const original = withoutStatus(dependencyComment.body || '').trimEnd();
+            const body = `${original ? `${original}\n\n` : ''}${formatStatus(statuses)}`;
+            if (body !== dependencyComment.body) {
+                await octokit.issues.updateComment({
+                    ...github.context.repo,
+                    comment_id: dependencyComment.id,
+                    body,
+                });
+            }
+        } else if (dependencies.length !== 0) {
+            await octokit.issues.createComment({
+                ...commentParams,
+                body: formatStatus(statuses),
+            });
         }
 
         if (dependencyIssues.length !== 0) {

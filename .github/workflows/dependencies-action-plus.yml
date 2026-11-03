@@ -1,0 +1,19 @@
+name: PR Dependency Check +
+
+on: [pull_request, workflow_dispatch]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+jobs:
+  dependencies_action_plus:
+    runs-on: ubuntu-latest
+    name: dependencies-action-plus
+    steps:
+    - uses: actions/checkout@v2
+    - name: dependencies-action-plus
+      uses: ./
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

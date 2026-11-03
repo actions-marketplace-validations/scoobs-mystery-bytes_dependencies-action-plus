@@ -12,18 +12,18 @@ test('Shorthand', () => {
         }]);
 });
 
-const partialLink = 'Depends on gregsdennis/dependencies-action#5'
+const partialLink = 'Depends on scoobs-mystery-bytes/dependencies-action-plus#5'
 test('partialLink', () => {
     expect(evaluate.getAllDependencies(partialLink))
         .toStrictEqual([{
-            owner: 'gregsdennis',
-            repo: 'dependencies-action',
+            owner: 'scoobs-mystery-bytes',
+            repo: 'dependencies-action-plus',
             pull_number: 5
         }]);
 });
 
 const shorthandAndPartialLink = `Depends on #14
-Depends on gregsdennis/dependencies-action#5`
+Depends on scoobs-mystery-bytes/dependencies-action-plus#5`
 test('shorthandAndPartialLink', () => {
     expect(evaluate.getAllDependencies(shorthandAndPartialLink))
         .toStrictEqual([{
@@ -31,14 +31,14 @@ test('shorthandAndPartialLink', () => {
             repo: 'repo',
             pull_number: 14
         },{
-            owner: 'gregsdennis',
-            repo: 'dependencies-action',
+            owner: 'scoobs-mystery-bytes',
+            repo: 'dependencies-action-plus',
             pull_number: 5
         }]);
 });
 
 const shorthandAndPartialLinkWithBlankLineAtEnd = `Depends on #14
-Depends on gregsdennis/dependencies-action#5
+Depends on scoobs-mystery-bytes/dependencies-action-plus#5
 `
 test('shorthandAndPartialLinkWithBlankLineAtEnd', () => {
     expect(evaluate.getAllDependencies(shorthandAndPartialLinkWithBlankLineAtEnd))
@@ -47,15 +47,15 @@ test('shorthandAndPartialLinkWithBlankLineAtEnd', () => {
             repo: 'repo',
             pull_number: 14
         },{
-            owner: 'gregsdennis',
-            repo: 'dependencies-action',
+            owner: 'scoobs-mystery-bytes',
+            repo: 'dependencies-action-plus',
             pull_number: 5
         }]);
 });
 
 const shorthandAndPartialLinkWithBlankLineInMiddle = `Depends on #14
 
-Depends on gregsdennis/dependencies-action#5`
+Depends on scoobs-mystery-bytes/dependencies-action-plus#5`
 test('shorthandAndPartialLinkWithBlankLineInMiddle', () => {
     expect(evaluate.getAllDependencies(shorthandAndPartialLinkWithBlankLineInMiddle))
         .toStrictEqual([{
@@ -63,8 +63,8 @@ test('shorthandAndPartialLinkWithBlankLineInMiddle', () => {
             repo: 'repo',
             pull_number: 14
         },{
-            owner: 'gregsdennis',
-            repo: 'dependencies-action',
+            owner: 'scoobs-mystery-bytes',
+            repo: 'dependencies-action-plus',
             pull_number: 5
         }]);
 });
@@ -73,7 +73,7 @@ const multipleInDashBulletedListWithMixedLinkTypes = `- Blocked by: https://gith
 - Blocked by: https://github.com/username/action_bump/pull/1
 - Blocked By https://github.com/username/action_python/pull/1
 - Blocked By: https://github.com/username/action_pull_requests/pull/1
-- Related: https://github.com/username/dependencies-action/issues/28
+- Related: https://github.com/username/dependencies-action-plus/issues/28
 - Related: #213 
 - Related: #214 `
 test('multipleInDashBulletedListWithMixedLinkTypes', () => {
@@ -101,7 +101,7 @@ const multipleInStarBulletedListWithMixedLinkTypes = `* Blocked by: https://gith
 * Blocked by: https://github.com/username/action_bump/pull/1
 * Blocked By https://github.com/username/action_python/pull/1
 * Blocked By: https://github.com/username/action_pull_requests/pull/1
-* Related: https://github.com/username/dependencies-action/issues/28
+* Related: https://github.com/username/dependencies-action-plus/issues/28
 * Related: #213 
 * Related: #214 `
 test('multipleInStarBulletedListWithMixedLinkTypes', () => {
