@@ -1,6 +1,10 @@
 # dependencies-action-plus
 
+![PR Dependency Check+ logo](assets/pr-dependency-check-banner-v5.png)
+
 This GitHub Action enforces PR dependencies declared in discussion comments or the PR description.
+
+PR Dependency Check+ is a separately maintained fork of [PR Dependency Check](https://github.com/gregsdennis/dependencies-action), enhanced to add and update PR discussion comments showing dependency status. Credit for the original action goes to its maintainers and contributors.
 
 The action searches discussion comments for the key phrases "depends on" or "blocked by" followed by a reference (e.g. `Depends on #5`). It uses the first comment containing dependencies. If no comment contains dependencies, it reads the PR description instead. Review comments on individual code lines are not scanned.
 
