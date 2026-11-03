@@ -17,7 +17,9 @@ The status section includes a dependency table with titles, a warning listing un
 > **All dependencies merged.** This PR is clear of dependency blockers.
 ```
 
-Only merged pull requests count as resolved. Closed but unmerged PRs, issue references, and dependencies that cannot be fetched remain blockers. Repeated references to the same dependency are shown once. No comment is created when no dependencies are declared.
+Every PR must declare at least one pull request dependency using a supported reference, such as `Depends on #123` or `Blocked by #123`, in its description or a discussion comment. If no dependencies are found, the check fails and posts or updates a warning explaining the requirement. Removing all dependency declarations also fails the check.
+
+Only merged pull requests count as resolved. The check passes only when at least one dependency is declared and all dependencies are merged. Closed but unmerged PRs, issue references, and dependencies that cannot be fetched remain blockers. Repeated references to the same dependency are shown once.
 
 The marker reserves the rest of the comment for the generated status section. Keep dependency declarations and other text above it. Dependencies are refreshed when the workflow runs; merging a dependency in another PR does not itself rerun this PR's workflow.
 

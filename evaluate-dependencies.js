@@ -14,6 +14,7 @@ const partialUrlRegex = new RegExp(`(${keyPhrases}):? ([-_\\w]+)\\/([-._a-z0-9]+
 const fullUrlRegex = new RegExp(`(${keyPhrases}):? https?:\\/\\/(?:${domainsString})\\/([-_\\w]+)\\/([-._a-z0-9]+)\\/(${issueTypes})\\/(\\d+)`, 'gmi');
 const markdownRegex = new RegExp(`(${keyPhrases}):? \\[.*\\]\\(https?:\\/\\/(?:${domainsString})\\/([-_\\w]+)\\/([-._a-z0-9]+)\\/(${issueTypes})\\/(\\d+)\\)`, 'gmi');
 const statusMarker = '<!-- pr-dependencies -->';
+const missingDependencyMessage = 'No dependencies found. Add at least one pull request dependency using "Depends on #123" or "Blocked by #123" in the PR description or a discussion comment.';
 
 function withoutStatus(body) {
     const start = body.indexOf(statusMarker);
@@ -28,17 +29,22 @@ function formatStatus(dependencies) {
     };
     const escapeTitle = title => title.replace(/\s+/g, ' ').replace(/[\\`*_{}\[\]<>()|!]/g, '\\$&');
     const waiting = dependencies.filter(item => !item.resolved);
-    const notice = waiting.length
+    const notice = dependencies.length === 0
+        ? `> [!WARNING]\n> **Dependency required.** ${missingDependencyMessage}`
+        : waiting.length
         ? `> [!WARNING]\n> **Waiting on ${waiting.length} ${waiting.length === 1 ? 'dependency' : 'dependencies'}.** Merge ${waiting.map(item => reference(item.dependency)).join(', ')} before merging this PR.`
         : '> [!TIP]\n> **All dependencies merged.** This PR is clear of dependency blockers.';
     const rows = dependencies.map(({ dependency, title, state }) =>
         `| ${reference(dependency)} — ${escapeTitle(title)} | ${state} |`);
+    const table = dependencies.length
+        ? `\n\n| Dependency | Status |\n| :--- | :--- |\n${rows.join('\n')}`
+        : '';
     const now = new Date();
     const date = now.toLocaleDateString('en-US', {
         month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC',
     });
     const time = now.toISOString().slice(11, 16);
-    return `${statusMarker}\n\n### 🔗 Pull request dependencies\n\n${notice}\n\n| Dependency | Status |\n| :--- | :--- |\n${rows.join('\n')}\n\n<details>\n<summary>How dependencies are checked</summary>\n\nDependencies are refreshed automatically when this workflow runs.\nOnly merged pull requests count as resolved.\n\n</details>\n\n---\n_Last checked: ${date} · ${time} UTC_`;
+    return `${statusMarker}\n\n### 🔗 Pull request dependencies\n\n${notice}${table}\n\n<details>\n<summary>How dependencies are checked</summary>\n\nDependencies are refreshed automatically when this workflow runs.\nOnly merged pull requests count as resolved.\n\n</details>\n\n---\n_Last checked: ${date} · ${time} UTC_`;
 }
 
 function escapeDomainForRegex(domain) {
@@ -181,14 +187,16 @@ async function evaluate() {
                     body,
                 });
             }
-        } else if (dependencies.length !== 0) {
+        } else {
             await octokit.issues.createComment({
                 ...commentParams,
                 body: formatStatus(statuses),
             });
         }
 
-        if (dependencyIssues.length !== 0) {
+        if (dependencies.length === 0) {
+            core.setFailed(missingDependencyMessage);
+        } else if (dependencyIssues.length !== 0) {
             var msg = '\nThe following issues need to be resolved before this PR can be merged:\n';
             for (var pr of dependencyIssues) {
                 msg += `\n#${pr.number} - ${pr.title}`;

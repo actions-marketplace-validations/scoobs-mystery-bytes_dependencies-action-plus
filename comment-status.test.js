@@ -168,20 +168,31 @@ test('deduplicates dependencies and escapes titles in table rows', async () => {
     expect(octokit.pulls.get).toHaveBeenCalledTimes(3);
 });
 
-test('does not create a comment when no dependencies exist', async () => {
-    body = null;
+test.each([null, '', 'Update documentation', 'Depends on', 'Blocked by none'])(
+    'fails and explains the requirement when no dependencies exist: %p', async (description) => {
+    body = description;
     comments = [{ id: 9, body: 'Looks good!' }];
     await evaluate();
-    expect(octokit.issues.createComment).not.toHaveBeenCalled();
+    const status = octokit.issues.createComment.mock.calls[0][0].body;
+    expect(status).toContain('> [!WARNING]');
+    expect(status).toContain('**Dependency required.**');
+    expect(status).toContain('Depends on #123');
+    expect(status).not.toContain('All dependencies merged');
+    expect(status).not.toContain('| Dependency | Status |');
     expect(octokit.issues.updateComment).not.toHaveBeenCalled();
+    expect(octokit.pulls.get).toHaveBeenCalledTimes(1);
+    expect(core.setFailed).toHaveBeenCalledWith(expect.stringContaining('No dependencies found.'));
 });
 
-test('clears stale blockers when dependency declarations are removed', async () => {
+test('replaces stale success with a warning and fails when declarations are removed', async () => {
     body = '';
-    comments = [{ id: 10, body: '<!-- pr-dependencies -->\nOld warning' }];
+    comments = [{ id: 10, body: '<!-- pr-dependencies -->\nAll dependencies merged.' }];
     await evaluate();
-    expect(octokit.issues.updateComment.mock.calls[0][0].body).toContain('> [!TIP]');
-    expect(core.setFailed).not.toHaveBeenCalled();
+    const status = octokit.issues.updateComment.mock.calls[0][0].body;
+    expect(status).toContain('**Dependency required.**');
+    expect(status).not.toContain('All dependencies merged');
+    expect(octokit.issues.createComment).not.toHaveBeenCalled();
+    expect(core.setFailed).toHaveBeenCalledWith(expect.stringContaining('No dependencies found.'));
 });
 
 test('reports comment write failures', async () => {
