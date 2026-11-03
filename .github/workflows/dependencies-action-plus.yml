@@ -10,10 +10,10 @@ permissions:
 jobs:
   dependencies_action_plus:
     runs-on: ubuntu-latest
-    name: dependencies-action-plus
+    name: Check for linked PR
     steps:
     - uses: actions/checkout@v2
-    - name: dependencies-action-plus
+    - name: Check for linked PR
       uses: ./
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

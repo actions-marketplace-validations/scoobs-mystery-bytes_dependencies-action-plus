@@ -1,5 +1,12 @@
 ![PR Dependency Check+ logo](assets/pr-dependency-check-banner-v5.png)
 
+> [!IMPORTANT]
+> **Installing this fork makes a linked PR dependency mandatory for every PR checked by the workflow.** Add `Depends on #123` or `Blocked by #123` to the PR description, referencing a dependency PR. Discussion comment declarations are also supported.
+>
+> **No linked PR dependency means the check fails.** All declared dependencies must be merged before the check passes. An issue link alone does not satisfy the requirement.
+>
+> **If your repository does not require a linked PR dependency on every PR, use the original [PR Dependency Check](https://github.com/gregsdennis/dependencies-action) instead of this fork.**
+
 This GitHub Action enforces PR dependencies declared in discussion comments or the PR description.
 
 PR Dependency Check+ is a separately maintained fork of [PR Dependency Check](https://github.com/gregsdennis/dependencies-action), enhanced to add and update PR discussion comments showing dependency status. Credit for the original action goes to its maintainers and contributors.
@@ -41,8 +48,10 @@ Also supports custom domains for use with GitHub Enterprise!
 
 Just add the following to a `.yml` file in your `.github/workflows/` folder.
 
+By installing this workflow, you require a linked PR dependency on every PR it checks. PRs without a dependency will fail, including standalone changes. For optional dependencies, use the original [PR Dependency Check](https://github.com/gregsdennis/dependencies-action).
+
 ```yaml
-name: dependencies-action-plus
+name: PR Dependency Check +
 
 on:
   pull_request_target: 
@@ -60,7 +69,7 @@ jobs:
       github.event_name != 'issue_comment' ||
       (github.event.issue.pull_request && github.event.sender.type != 'Bot')
     runs-on: ubuntu-latest
-    name: dependencies-action-plus
+    name: Check for linked PR
     steps:
     - uses: scoobs-mystery-bytes/dependencies-action-plus@main
       with:
