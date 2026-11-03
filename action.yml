@@ -1,4 +1,4 @@
-name: 'dependencies-action-plus'
+name: 'PR Dependency Check +'
 description: 'Verify PR dependencies are merged and update a dependency status comment'
 branding:
   icon: alert-triangle
